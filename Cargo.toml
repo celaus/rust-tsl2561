@@ -1,0 +1,15 @@
+[package]
+name = "tsl2561"
+version = "0.1.0"
+authors = ["Claus Matzinger <claus.matzinger+kb@gmail.com>"]
+description = "A Rust driver for the Adafruit TSL2561 luminosity sensor device."
+repository = "https://github.com/celaus/rust-tsl2561"
+keywords = ["tsl2561", "adafruit"]
+license = "Apache-2.0"
+
+[dependencies]
+i2cdev = "0.3.1"
+
+[dev-dependencies]
+byteorder = "0.5.3"
+rand = "0.3.15"
