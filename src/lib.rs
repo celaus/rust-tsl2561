@@ -18,7 +18,6 @@ use std::thread;
 use std::time::Duration;
 use std::error::Error;
 use i2cdev::core::*;
-use i2cdev::sensors::{Thermometer, Barometer};
 
 
 // -------------------------------------------------------------------------------
@@ -31,112 +30,63 @@ pub const TSL2561_I2C_ADDR: u16 = 0x39; //TSL2561 default address.
 #[derive(Clone, Debug)]
 pub enum Gain {
     Auto = 0,
-    Low = 1,
-    High = 16,
+    Low = 0x02,
+    High = 0x12,
 }
 
 // -------------------------------------------------------------------------------
 
 // BMP085 register addresses
 enum Register {
-    Tsl2561Full = 0x8C, // R   Calibration data (16 bits)
-    Tsl2561IR = 0x8E, // R   Calibration data (16 bits)
-    Tsl2561Control = 0xF4,
-    Tsl2561Data = 0x0C, // Data0
+    Tsl2561Enable = 0x80,
+    Tsl2561Gain = 0x81,
+    Tsl2561Full = 0x8C,
+    Tsl2561IR = 0x8E,
+    Tsl2561Data0 = 0x0C, // Data0/DataLow
+    Tsl2561Data1 = 0x0D, // Data1/DataHigh
 }
 
 // BMP085 command register addresses
 enum Command {
-    Tsl2561ReadData = 0xAC,
-    Bmp085ReadPressureCmd = 0x34,
+    Tsl2561Enable = 0x03,
 }
 
 // -------------------------------------------------------------------------------
 
-// Helper method to convert an u16 x endian integer to a i16 big endian integer
-fn i_to_be(r: u16) -> i16 {
-    let a = r as i16;
-    a.to_be()
-}
-
-// Helper method to convert an u16 x endian integer to a u16 big endian integer
-fn u_to_be(r: u16) -> u16 {
-    r.to_be()
-}
 
 // ---------------------------------------------------------------------------------
 
 ///
-/// Reads the raw temperature data...
+/// Reads the raw infrafred data...
 ///
-fn read_raw_temp<E: Error>(dev: &mut I2CDevice<Error = E>,
-                           coeff: &BMP085SensorCoefficients)
-                           -> Result<(i32, i32), E> {
-    try!(dev.smbus_write_byte_data(Register::Bmp085Control as u8,
-                                   Command::Bmp085ReadTempCmd as u8));
+fn enable_dev<E: Error>(dev: &mut I2CDevice<Error = E>) -> Result<(), E> {
+    try!(dev.smbus_write_byte_data(Register::Tsl2561Enable as u8, Command::Tsl2561Enable as u8));
+    Ok(())
+}
 
-    thread::sleep(Duration::from_millis(5)); // sleep for 4.5 ms
-
-    let ut: i32 = i_to_be(try!(dev.smbus_read_word_data(Register::Bmp085Data as u8))) as i32;
-    let ac6: i32 = coeff.cal_ac6 as i32;
-    let ac5: i32 = coeff.cal_ac5 as i32;
-    let md: i32 = coeff.cal_md as i32;
-    let mc: i32 = coeff.cal_mc as i32;
-
-
-    let _ac5 = ac5 as i64;
-    let x1: i32 = ((ut - ac6) as i64 * _ac5 >> 15) as i32; // Note: X>>15 == X/(pow(2,15))
-    let x2: i32 = (mc << 11) / (x1 + md); // Note: X<<11 == X<<(pow(2,11))
-    let b5: i32 = x1 + x2;
-    let t: i32 = (b5 + 8) >> 4;
-    Ok((t, b5))
+///
+/// Reads the raw infrafred data...
+///
+fn set_gain<E: Error>(dev: &mut I2CDevice<Error = E>, gain: Gain) -> Result<(), E> {
+    let r = try!(dev.smbus_write_byte_data(Register::Tsl2561Gain as u8, gain as u8));
+    thread::sleep(Duration::from_millis(400)); // sleep for 4.5 ms
+    Ok(r)
 }
 
 ///
 /// Reads the raw full (IR + Lux) data...
 ///
 fn read_raw_full<E: Error>(dev: &mut I2CDevice<Error = E>) -> Result<u16, E> {
-    let ir = try!(dev.smbus_read_word_data(Register::Tsl2561Full as u8))
-    Ok(ir)
+    let full = try!(dev.smbus_read_word_data(Register::Tsl2561Full as u8)).to_be();
+    Ok(full)
 }
 
 ///
 /// Reads the raw infrafred data...
 ///
 fn read_raw_ir<E: Error>(dev: &mut I2CDevice<Error = E>) -> Result<u16, E> {
-    let ir = try!(dev.smbus_read_word_data(Register::Tsl2561IR as u8))
+    let ir = try!(dev.smbus_read_word_data(Register::Tsl2561IR as u8)).to_be();
     Ok(ir)
-}
-
-
-///
-/// Reads the raw data for visible light...
-///
-fn read_raw_lux<E: Error>(dev: &mut I2CDevice<Error = E>, gain: Gain) -> Result<(i32, i32), E> {
-    match gain {
-        Gain::High -> ,
-        Gain::Low -> ,
-        Gain::Auto ->,
-    }
-
-    try!(dev.smbus_write_byte_data(Register::Bmp085Control as u8,
-                                   Command::Bmp085ReadTempCmd as u8));
-
-    thread::sleep(Duration::from_millis(5)); // sleep for 4.5 ms
-
-    let ut: i32 = i_to_be(try!(dev.smbus_read_word_data(Register::Bmp085Data as u8))) as i32;
-    let ac6: i32 = coeff.cal_ac6 as i32;
-    let ac5: i32 = coeff.cal_ac5 as i32;
-    let md: i32 = coeff.cal_md as i32;
-    let mc: i32 = coeff.cal_mc as i32;
-
-
-    let _ac5 = ac5 as i64;
-    let x1: i32 = ((ut - ac6) as i64 * _ac5 >> 15) as i32; // Note: X>>15 == X/(pow(2,15))
-    let x2: i32 = (mc << 11) / (x1 + md); // Note: X<<11 == X<<(pow(2,11))
-    let b5: i32 = x1 + x2;
-    let t: i32 = (b5 + 8) >> 4;
-    Ok((t, b5))
 }
 
 
@@ -147,6 +97,7 @@ fn read_raw_lux<E: Error>(dev: &mut I2CDevice<Error = E>, gain: Gain) -> Result<
 ///
 pub struct TSL2561LuminositySensor<T: I2CDevice + Sized> {
     pub dev: T,
+    pub enabled: bool,
 }
 
 impl<T> TSL2561LuminositySensor<T>
@@ -166,17 +117,17 @@ impl<T> TSL2561LuminositySensor<T>
     /// println!("Temperature: {:?} C", s.temperature_celsius().unwrap());
     /// println!("Pressure:    {:?} kPa", s.pressure_kpa().unwrap());
     /// ```
-    pub fn new(mut dev: T)
-               -> Result<TSL2561LuminositySensor<T>, T::Error> {
+    pub fn new(dev: T) -> Result<TSL2561LuminositySensor<T>, T::Error> {
         Ok(TSL2561LuminositySensor {
             dev: dev,
+            enabled: false,
         })
     }
 }
 
-trait LuminositySensor<T> {
-    fn read_ir(&mut self) -> Result<u16, T::Error>;
-    fn read_full(&mut self) -> Result<u16, T::Error>;
+trait LuminositySensor {
+    type Error;
+    fn read_lux(&mut self, gain: Gain) -> Result<f64, Self::Error>;
 }
 
 impl<T> LuminositySensor for TSL2561LuminositySensor<T>
@@ -184,11 +135,40 @@ impl<T> LuminositySensor for TSL2561LuminositySensor<T>
 {
     type Error = T::Error;
 
-    fn read_ir(&mut self) -> Result<u16, T::Error>{
-        read_raw_ir(&mut self.dev)
-    }
-    fn read_full(&mut self) -> Result<u16, T::Error> {
-        read_raw_full(&mut self.dev)
+    fn read_lux(&mut self, gain: Gain) -> Result<f64, T::Error> {
+        if !self.enabled {
+            try!(enable_dev(&mut self.dev));
+            self.enabled = true;
+        }
+        try!(set_gain(&mut self.dev,
+                      match gain {
+                          Gain::Auto | Gain::High => Gain::High,
+                          _ => Gain::Low,
+                      }));
+
+        let ambient = read_raw_full(&mut self.dev).unwrap() as f64;
+        let IR = read_raw_ir(&mut self.dev).unwrap() as f64;
+
+
+        let (ambient, IR) = match gain {
+            Gain::High => (ambient * 16f64, IR * 16f64),
+            _ => (ambient, IR),
+        };
+
+        let ratio = IR / (ambient as f64);
+
+        let lux = if ratio >= 0f64 && ratio <= 0.52 {
+            (0.0315 * ambient) - (0.0593 * ambient * ratio.powf(1.4))
+        } else if ratio <= 0.65 {
+            (0.0229 * ambient) - (0.0291 * IR)
+        } else if ratio <= 0.80 {
+            (0.0157 * ambient) - (0.018 * IR)
+        } else if ratio <= 1.3 {
+            (0.00338 * ambient) - (0.0026 * IR)
+        } else {
+            0f64
+        };
+        Ok(lux)
     }
 }
 
@@ -202,7 +182,8 @@ mod tests {
     extern crate byteorder;
     extern crate rand;
 
-    use super::{Command, Register, SamplingMode, BMP085SensorCoefficients, BMP085BarometerThermometer};
+    use super::{Command, Register, SamplingMode, BMP085SensorCoefficients,
+                BMP085BarometerThermometer};
     use i2cdev::sensors::{Thermometer, Barometer};
     use i2cdev::core::I2CDevice;
     use self::byteorder::{BigEndian, ByteOrder};
@@ -211,37 +192,23 @@ mod tests {
 
     pub struct MockTSL2561 {
         reg: Register,
-        offset: usize,
-        t_data: u16,
-        p_data: u16,
-        last_cmd: Command,
+        enabled: bool,
+        ir_data: u16,
+        full_data: u16,
     }
 
 
-    impl I2CDevice for MockBMP085 {
+    impl I2CDevice for MockTSL2561 {
         type Error = io::Error;
 
         fn read(&mut self, data: &mut [u8]) -> Result<(), Self::Error> {
             let mut buf = [0; 3]; // array of size 3 for simpler offsets
-            let reading = match self.last_cmd {
-                Command::Bmp085ReadTempCmd => self.t_data,
-                Command::Bmp085ReadPressureCmd => self.p_data, // Pressure command :)
-            };
 
             match self.reg {
-                Register::Tsl2561AC1 => BigEndian::write_i16(&mut buf, self.coeff.cal_ac1),
-                Register::Tsl2561AC2 => BigEndian::write_i16(&mut buf, self.coeff.cal_ac2),
-                Register::Tsl2561AC3 => BigEndian::write_i16(&mut buf, self.coeff.cal_ac3),
-                Register::Tsl2561AC4 => BigEndian::write_u16(&mut buf, self.coeff.cal_ac4),
-                Register::Tsl2561AC5 => BigEndian::write_u16(&mut buf, self.coeff.cal_ac5),
-                Register::Tsl2561AC6 => BigEndian::write_u16(&mut buf, self.coeff.cal_ac6),
-                Register::Tsl2561B1 => BigEndian::write_i16(&mut buf, self.coeff.cal_b1),
-                Register::Tsl2561B2 => BigEndian::write_i16(&mut buf, self.coeff.cal_b2),
-                Register::Tsl2561Mb => BigEndian::write_i16(&mut buf, self.coeff.cal_mb),
-                Register::Tsl2561Mc => BigEndian::write_i16(&mut buf, self.coeff.cal_mc),
-                Register::Tsl2561Md => BigEndian::write_i16(&mut buf, self.coeff.cal_md),
-                Register::Bmp085Control => BigEndian::write_i16(&mut buf, 0),
-                Register::Bmp085Data => BigEndian::write_u16(&mut buf, reading),
+                Register::Tsl2561Enable => BigEndian::write_u8(self.enabled as u8),
+                Register::Tsl2561Gain => BigEndian::write_u16(self.gain_data),
+                Register::Tsl2561Full => BigEndian::write_u16(self.full_data),
+                Register::Tsl2561IR => BigEndian::write_u16(self.ir_data),
             };
 
             for (i, elem) in data.iter_mut().enumerate() {
@@ -254,35 +221,10 @@ mod tests {
             let d = [0, data[0]];
             self.offset = 0;
             self.reg = match BigEndian::read_u16(&d) {
-                0xAA => Register::Tsl2561AC1,
-                0xAC => Register::Tsl2561AC2,
-                0xAE => Register::Tsl2561AC3,
-                0xB0 => Register::Tsl2561AC4,
-                0xB2 => Register::Tsl2561AC5,
-                0xB4 => Register::Tsl2561AC6,
-                0xB6 => Register::Tsl2561B1,
-                0xB8 => Register::Tsl2561B2,
-                0xBA => Register::Tsl2561Mb,
-                0xBC => Register::Tsl2561Mc,
-                0xBE => Register::Tsl2561Md,
-                0xF4 => {
-                    self.last_cmd = if data[1] == (Command::Bmp085ReadTempCmd as u8) {
-                        Command::Bmp085ReadTempCmd
-                    } else {
-                        // don't do exact matching to prevent sampling mode influences
-                        Command::Bmp085ReadPressureCmd
-                    };
-                    Register::Bmp085Control
-                }
-                0xF6 => Register::Bmp085Data,
-                0xF7 => {
-                    self.offset = 1;
-                    Register::Bmp085Data
-                }
-                0xF8 => {
-                    self.offset = 2;
-                    Register::Bmp085Data
-                }
+                0x80 => Register::Tsl2561Enable,
+                0x81 => Register::Tsl2561Gain,
+                0x8C => Register::Tsl2561Full,
+                0x8E => Register::Tsl2561IR,
                 _ => unimplemented!(),
             };
             Ok(())
@@ -318,32 +260,18 @@ mod tests {
         }
     }
 
-    fn new_i2c_mock(temperature: u16, pressure: u16) -> MockBMP085 {
-        let coeff = BMP085SensorCoefficients {
-            cal_ac1: 408i16,
-            cal_ac2: -72i16,
-            cal_ac3: -14383i16,
-            cal_ac4: 32741u16,
-            cal_ac5: 32757u16,
-            cal_ac6: 23153u16,
-            cal_b1: 6190i16,
-            cal_b2: 4i16,
-            cal_mb: -32768i16,
-            cal_mc: -8711i16,
-            cal_md: 2868i16,
-        };
-        MockBMP085 {
-            coeff: coeff,
-            reg: Register::Tsl2561AC1,
-            offset: 0,
-            t_data: temperature,
-            p_data: pressure,
-            last_cmd: Command::Bmp085ReadTempCmd,
+    fn new_i2c_mock(ir_data: u16, full_data: u16) -> MockTSL2561 {
+
+        MockTSL2561 {
+            reg: Register::Tsl2561Enable,
+            enabled: false,
+            ir_data: ir_data.to_be(),
+            full_data: full_data.to_be(),
         }
     }
 
-    fn make_dev(i2cdev: MockBMP085) -> BMP085BarometerThermometer<MockBMP085> {
-        BMP085BarometerThermometer::new(i2cdev, SamplingMode::UltraLowPower).unwrap()
+    fn make_dev(i2cdev: MockTSL2561) -> TSL2561LuminositySensor<MockTSL2561> {
+        TSL2561LuminositySensor::new(i2cdev).unwrap()
     }
 
     #[test]
@@ -362,36 +290,23 @@ mod tests {
     }
 
     #[test]
-    fn test_basic_temp_read() {
+    fn test_basic_lux_read() {
         let i2cdev = new_i2c_mock(27898, 0);
         let mut dev = make_dev(i2cdev);
         assert_eq!(dev.temperature_celsius().unwrap(), 15.0);
     }
 
     #[test]
-    fn test_zero_temp_read() {
+    fn test_zero_ir_read() {
         let i2cdev = new_i2c_mock(0, 0);
         let mut dev = make_dev(i2cdev);
         assert_eq!(dev.temperature_celsius().unwrap(), -139.2);
     }
 
     #[test]
-    fn test_max_temp_read() {
+    fn test_max_ir_read() {
         let i2cdev = new_i2c_mock(u16::max_value(), 0);
         let mut dev = make_dev(i2cdev);
         assert_eq!(dev.temperature_celsius().unwrap(), -139.2);
     }
-
-    #[test]
-    fn test_rand_temp_read() {
-        let n = 2_000;
-        let mut rng = rand::thread_rng();
-        for i in 0..n {
-            let i2cdev = new_i2c_mock(rng.gen::<u16>(), 0);
-            let mut dev = make_dev(i2cdev);
-            let _ = dev.temperature_celsius().unwrap();
-        }
-
-    }
-
 }
