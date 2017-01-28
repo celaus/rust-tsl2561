@@ -24,6 +24,7 @@ use i2cdev::core::*;
 
 pub const TSL2561_I2C_ADDR: u16 = 0x39; //TSL2561 default address.
 
+
 ///
 /// Gain mode
 ///
@@ -125,7 +126,7 @@ impl<T> TSL2561LuminositySensor<T>
     }
 }
 
-trait LuminositySensor {
+pub trait LuminositySensor {
     type Error;
     fn read_lux(&mut self, gain: Gain) -> Result<f64, Self::Error>;
 }
@@ -182,9 +183,7 @@ mod tests {
     extern crate byteorder;
     extern crate rand;
 
-    use super::{Command, Register, SamplingMode, BMP085SensorCoefficients,
-                BMP085BarometerThermometer};
-    use i2cdev::sensors::{Thermometer, Barometer};
+    use super::{Command, Register, TSL2561LuminositySensor};
     use i2cdev::core::I2CDevice;
     use self::byteorder::{BigEndian, ByteOrder};
     use self::rand::Rng;
