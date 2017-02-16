@@ -149,7 +149,7 @@ impl<T> LuminositySensor for TSL2561LuminositySensor<T>
 
         let ambient = read_raw_full(&mut self.dev).unwrap() as f64;
         let IR = read_raw_ir(&mut self.dev).unwrap() as f64;
-
+        println!("ambient={}, IR={}", ambient, IR);
 
         let (ambient, IR) = match gain {
             Gain::High => (ambient * 16f64, IR * 16f64),
