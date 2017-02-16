@@ -78,7 +78,7 @@ fn set_gain<E: Error>(dev: &mut I2CDevice<Error = E>, gain: &Gain) -> Result<(),
 /// Reads the raw full (IR + Lux) data...
 ///
 fn read_raw_full<E: Error>(dev: &mut I2CDevice<Error = E>) -> Result<u16, E> {
-    let full = try!(dev.smbus_read_word_data(Register::Tsl2561Full as u8)).to_le();
+    let full = try!(dev.smbus_read_word_data(Register::Tsl2561Full as u8)).to_be();
     Ok(full)
 }
 
@@ -86,7 +86,7 @@ fn read_raw_full<E: Error>(dev: &mut I2CDevice<Error = E>) -> Result<u16, E> {
 /// Reads the raw infrafred data...
 ///
 fn read_raw_ir<E: Error>(dev: &mut I2CDevice<Error = E>) -> Result<u16, E> {
-    let ir = try!(dev.smbus_read_word_data(Register::Tsl2561IR as u8)).to_le();
+    let ir = try!(dev.smbus_read_word_data(Register::Tsl2561IR as u8)).to_be();
     Ok(ir)
 }
 
