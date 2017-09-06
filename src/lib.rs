@@ -237,6 +237,7 @@ impl<T> TSL2561LuminositySensor<T>
         enable_dev(&mut self.dev)?;
         thread::sleep(delay);
         let _ambient = read_raw_full(&mut self.dev)?;
+        println!("_ambient={}", _ambient);
 
         let ambient = if (gain == Gain::Auto) {
             if (_ambient >= high) {
