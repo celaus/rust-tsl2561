@@ -115,7 +115,7 @@ enum Register {
     Tsl2561IR = 0x8E,
     Tsl2561Timing = 0x01,
     Tsl2561Data0 = 0x0C, // Data0/DataLow
-    Tsl2561Data1 = 0x0D, // Data1/DataHigh
+    Tsl2561Data1 = 0x0E, // Data1/DataHigh
     Tsl2561Id = 0x0A,
 }
 
@@ -235,6 +235,7 @@ impl<T> TSL2561LuminositySensor<T>
         };
 
         enable_dev(&mut self.dev)?;
+        thread::sleep(delay);
         let _ambient = read_raw_full(&mut self.dev)?;
 
         let ambient = if (gain == Gain::Auto) {
