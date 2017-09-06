@@ -141,6 +141,15 @@ fn enable_dev<E: Error>(dev: &mut I2CDevice<Error = E>) -> Result<(), E> {
     Ok(())
 }
 
+
+///
+/// Enable device (Power on)
+///
+fn begin<E: Error>(dev: &mut I2CDevice<Error = E>) -> Result<u8, E> {
+    let id = dev.smbus_read_byte(Register::Tsl2561Id as u8)?;
+    Ok(id)
+}
+
 ///
 /// Disable device (Power off)
 ///
@@ -149,6 +158,8 @@ fn disable_dev<E: Error>(dev: &mut I2CDevice<Error = E>) -> Result<(), E> {
                                Command::Tsl2561PowerOff as u8)?;
     Ok(())
 }
+
+
 
 ///
 /// Set gain.
@@ -233,8 +244,8 @@ impl<T> TSL2561LuminositySensor<T>
             Gain::Auto | Gain::High => Gain::High,
             _ => Gain::Low,
         };
-
         enable_dev(&mut self.dev)?;
+        println!("id={}", begin(&mut self.dev)?);
         thread::sleep(delay);
         let _ambient = read_raw_full(&mut self.dev)?;
         println!("_ambient={}", _ambient);
