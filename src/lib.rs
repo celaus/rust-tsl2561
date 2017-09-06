@@ -146,7 +146,7 @@ fn enable_dev<E: Error>(dev: &mut I2CDevice<Error = E>) -> Result<(), E> {
 /// Enable device (Power on)
 ///
 fn begin<E: Error>(dev: &mut I2CDevice<Error = E>) -> Result<u8, E> {
-    let id = dev.smbus_read_byte(Register::Tsl2561Id as u8)?;
+    let id = dev.smbus_read_byte_data(Register::Tsl2561Id as u8)?;
     Ok(id)
 }
 
