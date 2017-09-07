@@ -133,6 +133,15 @@ enum Command {
 // ---------------------------------------------------------------------------------
 
 ///
+/// Read id from device
+///
+fn begin<E: Error>(dev: &mut I2CDevice<Error = E>) -> Result<u8, E> {
+    let id = dev.smbus_read_byte_data(Register::Tsl2561Id as u8)?;
+    Ok(id)
+}
+
+
+///
 /// Enable device (Power on)
 ///
 fn enable_dev<E: Error>(dev: &mut I2CDevice<Error = E>) -> Result<(), E> {
@@ -142,13 +151,6 @@ fn enable_dev<E: Error>(dev: &mut I2CDevice<Error = E>) -> Result<(), E> {
 }
 
 
-///
-/// Enable device (Power on)
-///
-fn begin<E: Error>(dev: &mut I2CDevice<Error = E>) -> Result<u8, E> {
-    let id = dev.smbus_read_byte_data(Register::Tsl2561Id as u8)?;
-    Ok(id)
-}
 
 ///
 /// Disable device (Power off)
@@ -244,8 +246,9 @@ impl<T> TSL2561LuminositySensor<T>
             Gain::Auto | Gain::High => Gain::High,
             _ => Gain::Low,
         };
+
         enable_dev(&mut self.dev)?;
-        set_gain(&mut self.dev, &_gain, &time)?;
+        //set_gain(&mut self.dev, &_gain, &time)?;
 
         println!("id={}", begin(&mut self.dev)?);
         thread::sleep(delay);
