@@ -274,7 +274,7 @@ impl<T> TSL2561LuminositySensor<T>
         println!("ambient={}, IR={}", ambient, IR);
 
         let ambient = ambient as u32;
-        disable_dev(&mut self.dev)?;
+        //disable_dev(&mut self.dev)?;
         Ok((IR, ambient))
     }
 }
