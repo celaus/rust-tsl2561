@@ -182,6 +182,7 @@ fn set_gain<E: Error>(dev: &mut I2CDevice<Error = E>,
 fn read_raw_full<E: Error>(dev: &mut I2CDevice<Error = E>) -> Result<u16, E> {
     let full = dev.smbus_read_word_data(TSL2561_COMMAND_BIT | TSL2561_WORD_BIT |
                                         Register::Tsl2561Data0 as u8)?;
+    println!("BROADBAND READING: {}", full);
     Ok(full)
 }
 
@@ -191,6 +192,8 @@ fn read_raw_full<E: Error>(dev: &mut I2CDevice<Error = E>) -> Result<u16, E> {
 fn read_raw_ir<E: Error>(dev: &mut I2CDevice<Error = E>) -> Result<u16, E> {
     let ir = dev.smbus_read_word_data(TSL2561_COMMAND_BIT | TSL2561_WORD_BIT |
                                       Register::Tsl2561Data1 as u8)?;
+    println!("BROADBAND READING: {}", ir);
+
     Ok(ir)
 }
 
