@@ -248,7 +248,7 @@ impl<T> TSL2561LuminositySensor<T>
         };
 
         enable_dev(&mut self.dev)?;
-        //set_gain(&mut self.dev, &_gain, &time)?;
+        set_gain(&mut self.dev, &_gain, &time)?;
 
         println!("id={}", begin(&mut self.dev)?);
         thread::sleep(delay);
